@@ -56,11 +56,11 @@ class optimal_build:
         self.stats = stats
         
         # find all possible combinations
-        combos = self.find_combos()
+        self.combos = self.find_combos()
 
         # grab desired stats
-        self.stat1 = self.drivers.loc[combos[:,0],stats[0]].values + self.bodies.loc[combos[:,1],stats[0]].values + self.tires.loc[combos[:,2],stats[0]].values + self.gliders.loc[combos[:,3],stats[0]].values
-        self.stat2 = self.drivers.loc[combos[:,0],stats[1]].values + self.bodies.loc[combos[:,1],stats[1]].values + self.tires.loc[combos[:,2],stats[1]].values + self.gliders.loc[combos[:,3],stats[1]].values
+        self.stat1 = self.drivers.loc[self.combos[:,0],stats[0]].values + self.bodies.loc[self.combos[:,1],stats[0]].values + self.tires.loc[self.combos[:,2],stats[0]].values + self.gliders.loc[self.combos[:,3],stats[0]].values
+        self.stat2 = self.drivers.loc[self.combos[:,0],stats[1]].values + self.bodies.loc[self.combos[:,1],stats[1]].values + self.tires.loc[self.combos[:,2],stats[1]].values + self.gliders.loc[self.combos[:,3],stats[1]].values
 
         # find pareto fronteier
         self.p_front = pareto_frontier(self.stat1,self.stat2)
@@ -79,7 +79,7 @@ class optimal_build:
         else:
             NotImplementedError('Method must be nash ideal or ks')
 
-        build = combos[self.p_front_idx[self.opt_idx]]
+        build = self.combos[self.p_front_idx[self.opt_idx]]
         
         print('Optimal Configuration for '+stats[0]+' and '+stats[1])
         print(build)
