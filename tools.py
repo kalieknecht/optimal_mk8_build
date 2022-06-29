@@ -30,9 +30,14 @@ class optimal_build:
         self.bodies = bodies
         self.tires = tires
         self.gliders = gliders
+        self.drivers_clean = remove_duplicates(drivers)
+        self.bodies_clean = remove_duplicates(bodies)
+        self.tires_clean = remove_duplicates(tires)
+        self.gliders_clean = remove_duplicates(gliders)
     
     def find(self,
         stats,
+        duplicates=False,
         method='nash'):
         '''
         Find optimal build for desired stats
@@ -41,6 +46,8 @@ class optimal_build:
         ----------
         stats: list
             list of str of values desired
+        duplicates: bool
+            whether to include duplicates (default False)
         method: str
             which method 'nash', 'ks', or 'ideal'
         
@@ -56,11 +63,11 @@ class optimal_build:
         self.stats = stats
         
         # find all possible combinations
-        self.combos = self.find_combos()
+        self.combos = self.find_combos(duplicates=duplicates)
 
         # grab desired stats
-        self.stat1 = self.drivers.loc[self.combos[:,0],stats[0]].values + self.bodies.loc[self.combos[:,1],stats[0]].values + self.tires.loc[self.combos[:,2],stats[0]].values + self.gliders.loc[self.combos[:,3],stats[0]].values
-        self.stat2 = self.drivers.loc[self.combos[:,0],stats[1]].values + self.bodies.loc[self.combos[:,1],stats[1]].values + self.tires.loc[self.combos[:,2],stats[1]].values + self.gliders.loc[self.combos[:,3],stats[1]].values
+        self.stat1 = self.drivers_clean.loc[self.combos[:,0],stats[0]].values + self.bodies_clean.loc[self.combos[:,1],stats[0]].values + self.tires_clean.loc[self.combos[:,2],stats[0]].values + self.gliders_clean.loc[self.combos[:,3],stats[0]].values
+        self.stat2 = self.drivers_clean.loc[self.combos[:,0],stats[1]].values + self.bodies_clean.loc[self.combos[:,1],stats[1]].values + self.tires_clean.loc[self.combos[:,2],stats[1]].values + self.gliders_clean.loc[self.combos[:,3],stats[1]].values
 
         # find pareto fronteier
         self.p_front = pareto_frontier(self.stat1,self.stat2)
@@ -79,26 +86,51 @@ class optimal_build:
         else:
             NotImplementedError('Method must be nash ideal or ks')
 
-        build = self.combos[self.p_front_idx[self.opt_idx]]
+        self.build = self.combos[self.p_front_idx[self.opt_idx]]
         
         print('Optimal Configuration for '+stats[0]+' and '+stats[1])
-        print(build)
+        print(self.build)
         print('Stats: '+stats[0]+' and '+stats[1])
         print(self.p_front[self.opt_idx])
-        return build
+        return self.build
 
 
-    def find_combos(self):
+    def find_combos(self, duplicates=False):
         '''
         Find all possible combinations of configs
         
         '''
-        drivers_list = self.drivers.index.to_list()
-        bodies_list = self.bodies.index.to_list()
-        tires_list = self.tires.index.to_list()
-        gliders_list = self.gliders.index.to_list()
+        if duplicates:
+            drivers_list = self.drivers.index.to_list()
+            bodies_list = self.bodies.index.to_list()
+            tires_list = self.tires.index.to_list()
+            gliders_list = self.gliders.index.to_list()
+        else:
+            drivers_list = self.drivers_clean.index.to_list()
+            bodies_list = self.bodies_clean.index.to_list()
+            tires_list = self.tires_clean.index.to_list()
+            gliders_list = self.gliders_clean.index.to_list()
         combos = np.array([list(product(drivers_list,bodies_list,tires_list,gliders_list))])[0]
         return combos
+    
+    def find_matching_builds(self):
+        # drivers
+        drivers_mask = (self.drivers[self.drivers.duplicated()] == self.drivers.loc[self.build[0]]).sum(axis=1)==13
+        matching_drivers = self.drivers[self.drivers.duplicated()][drivers_mask].index.to_list()
+        # bodies
+        bodies_mask = (self.bodies[self.bodies.duplicated()] == self.bodies.loc[self.build[1]]).sum(axis=1)==13
+        matching_bodies = self.bodies[self.bodies.duplicated()][bodies_mask].index.to_list()
+        # tires
+        tires_mask = (self.tires[self.tires.duplicated()] == self.tires.loc[self.build[2]]).sum(axis=1)==13
+        matching_tires = self.tires[self.tires.duplicated()][tires_mask].index.to_list()
+        # gliders
+        matching_mask = (self.gliders[self.gliders.duplicated()] == self.gliders.loc[self.build[3]]).sum(axis=1)==13
+        matching_gliders = self.gliders[self.gliders.duplicated()][matching_mask].index.to_list()
+        print('Drivers: '+str(matching_drivers))
+        print('Bodies: '+str(matching_bodies))
+        print('Tires: '+str(matching_tires))
+        print('Gliders: '+str(matching_gliders))
+        return (matching_drivers, matching_bodies, matching_tires, matching_gliders)
 
 def pareto_frontier(Xs, Ys, maxX = True, maxY = True):
     '''
@@ -202,3 +234,7 @@ def ks_method(p_front,p1,p2):
     dist_to_ks = abs((p2[0]-p1[0])*(p1[1]-p_front[:,1]) - (p1[0] - p_front[:,0])*(p2[1]-p1[1]))/np.linalg.norm(p2-p1)
     min_idx_ks = np.argmin(dist_to_ks)
     return min_idx_ks
+
+def remove_duplicates(df):
+    clean_df = df[~df.duplicated()]
+    return clean_df
